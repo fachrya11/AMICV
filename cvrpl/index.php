@@ -58,7 +58,7 @@
         <!-- Footer-->
         <footer class="bg-white py-4 mt-auto">
             <div class="container px-5">
-                <div class="col-auto text-center"><div class="small m-0">Copyright &copy; Kelompok Bismillah</div></div>
+                <div class="col-auto text-center"><div class="small m-0">Copyright &copy; Kelompok Bismillahirohmanirrohim,</div></div>
             </div>
         </footer>
         <!-- Bootstrap core JS-->
