@@ -50,9 +50,10 @@ jobs:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
           DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
         run: |
-          sshpass -p $SSH_PASSWORD scp -o StrictHostKeyChecking=no docker-compose.yml $VPS_USER@$VPS_HOST:/home/$VPS_USER/docker-compose.yml
+          sshpass -p $SSH_PASSWORD scp -o StrictHostKeyChecking=no docker-compose.yml $VPS_USER@$VPS_HOST:/home/$VPS_USER/amicv/docker-compose.yml
           sshpass -p $SSH_PASSWORD ssh -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << EOF
+            sudo su
             echo $DOCKER_HUB_PASSWORD | docker login -u $DOCKER_HUB_USERNAME --password-stdin
             docker pull $DOCKER_HUB_USERNAME/cvrpl:latest
-            docker-compose -f /home/$VPS_USER/docker-compose.yml up -d
+            docker-compose -f /home/$VPS_USER/amicv/docker-compose.yml up -d
           EOF
