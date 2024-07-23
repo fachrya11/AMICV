@@ -1,26 +1,59 @@
-name: PHP CI
+name: publish
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+on: [push]
 
 jobs:
   build:
+    name: VPS Deployment
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
 
-    - name: Set up PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '7.4'
+      - name: Checkout
+        uses: actions/checkout@main
 
-    - name: Validate PHP syntax
-      run: |
-        find . -name "*.php" -print0 | xargs -0 -n1 php -l
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/cvrpl:latest .
+
+      - name: Login to Docker Hub
+        run: |
+          echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+
+      - name: Push Docker Image to Docker Hub
+        run: |
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/cvrpl:latest
+
+      - name: Install sshpass
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+
+      - name: Create Docker Compose File
+        run: |
+          cat <<EOF > docker-compose.yml
+          version: '3'
+          services:
+            cvrpl:
+              image: ${{ secrets.DOCKER_HUB_USERNAME }}/cvrpl:latest
+              ports:
+                - "8088:80"
+              restart: always
+              extra_hosts:
+                - "host.docker.internal:host-gateway"
+          EOF
+
+      - name: Deploy to VPS
+        env:
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
+        run: |
+          sshpass -p $SSH_PASSWORD scp -o StrictHostKeyChecking=no docker-compose.yml $VPS_USER@$VPS_HOST:/home/$VPS_USER/docker-compose.yml
+          sshpass -p $SSH_PASSWORD ssh -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << EOF
+            sudo su
+            echo $DOCKER_HUB_PASSWORD | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+            docker pull $DOCKER_HUB_USERNAME/cvrpl:latest
+            docker-compose -f /home/$VPS_USER/docker-compose.yml up -d
+          EOF
